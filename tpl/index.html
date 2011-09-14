@@ -1,0 +1,52 @@
+<!doctype html>
+<!--[if lt IE 7 ]><html class="ie ie6" lang="en"> <![endif]-->
+<!--[if IE 7 ]><html class="ie ie7" lang="en"> <![endif]-->
+<!--[if IE 8 ]><html cl~daasaass="ie ie8" lang="en"> <![endif]-->
+<!--[if (gte IE 9)|!(IE)]><!--><html lang="en"> <!--<![endif]-->
+<head>
+
+	<meta charset="utf-8" />
+	<title>Todo List</title>
+	<meta name="description" content="">
+	<meta name="author" content="">
+	<!--[if lt IE 9]>
+		<script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+	<![endif]-->
+	
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" /> 
+	
+	<link rel="shortcut icon" href="image/favicon.ico">
+	<link rel="apple-touch-icon" href="image/apple-touch-icon.png">
+	<link rel="apple-touch-icon" sizes="72x72" href="image/apple-touch-icon-72x72.png" />
+	<link rel="apple-touch-icon" sizes="114x114" href="image/apple-touch-icon-114x114.png" />
+
+  <script src="lib/json2.js" type="text/javascript" charset="utf-8"></script>
+  <script src="lib/jquery.js" type="text/javascript" charset="utf-8"></script>
+  <script src="lib/mustache.js" type="text/javascript" charset="utf-8"></script>
+  <script src="lib/spine.js" type="text/javascript" charset="utf-8"></script>
+  <script src="lib/spine.ajax.js" type="text/javascript" charset="utf-8"></script>
+
+  <link rel="stylesheet" href="css/style.css">
+ 
+  <script src="js/controller.js" type="text/javascript" charset="utf-8"></script>
+
+</head>
+<body>
+  <div id="views">
+    <div id="tasks">
+      <h1>Todos</h1>
+      
+      <form>
+        <input type="text" placeholder="What needs to be done?">
+      </form>
+      
+      <div class="items"></div>
+      
+      <footer>
+        <a class="clear">Clear completed</a>
+        <div class="count"><span class="countVal"></span> left</div>
+      </footer>
+    </div>
+  </div>
+</body>
+</html>
