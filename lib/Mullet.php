@@ -79,11 +79,14 @@ class Mullet {
 	      $this->dbclass = 'MulletMongoDB';
 			    $this->conn = new Mongo();
 	      break;
-		  case 'couchdb':
-		  $this->dbclass = 'MulletCouchDB';
-		  		$this->conn = false;
-		  		//$this->conn = new couchClient(DATABASE_HOST.":".DATABASE_PORT,DATABASE_NAME);
-		  break;
+  		case 'couchdb':
+        require_once 'lib/couch.php';
+        require_once 'lib/couchClient.php';
+        require_once 'lib/couchDocument.php';
+  		  $this->dbclass = 'MulletCouchDB';
+		  	$this->conn = false;
+		  	//$this->conn = new couchClient(DATABASE_HOST.":".DATABASE_PORT,DATABASE_NAME);
+		    break;
 		}
   }
 
@@ -1145,45 +1148,68 @@ function find( $collname, $criteria = false ) {
 
 
 class MulletCouchDB extends MulletDatabase {
-
+  
 	function create_fields_if_not_exists( $doc, $name ) {
 	}
 	
 	function create_if_not_exists( $doc, $name ) {
-	   
 	}
 	
 	function remove_doc( $criteria, $collname ) {
-		$coll = new couchClient(DATABASE_HOST.":".DATABASE_PORT,$this->name."_".$collname);
-		if ( !$coll->databaseExists() ) {
-		$coll->createDatabase();
+
+		$coll = new couchClient('https://'.DATABASE_USER.":".DATABASE_PASSWORD."@".DATABASE_HOST.":".DATABASE_PORT,$this->name."_".$collname);
+		if ( !$coll->databaseExists() )
+		  $coll->createDatabase();
+		$result = $coll->getAllDocs();
+		$data = array();
+		foreach($result->rows as $r) {
+  		$item = $coll->getDoc($r->id);
+  	  if (!isset($item->id))
+  	    $item->id = $item->_id;
+	    $item->keyname = $item->_id;
+		  $match = false;
+	    foreach ($criteria as $c) 
+		    foreach ($c as $k=>$v)
+          if ($item->$k == $v)
+            $match = true;
+		  if ($match)
+		    $data[] = $item;
 		}
-		$result = $coll->getDoc($criteria["_id"]);
-		$coll->deleteDoc($result);	   
+		foreach($data as $doc)
+		  $coll->deleteDoc($doc);
+
 	}
 	
 	function update_doc( $criteria, $newobj, $collname ) {
-	   
-	    $coll = new couchClient(DATABASE_HOST.":".DATABASE_PORT,$this->name."_".$collname);
-		if ( !$coll->databaseExists() ) {
-		$coll->createDatabase();
+
+		$coll = new couchClient('https://'.DATABASE_USER.":".DATABASE_PASSWORD."@".DATABASE_HOST.":".DATABASE_PORT,$this->name."_".$collname);
+		if ( !$coll->databaseExists() )
+		  $coll->createDatabase();
+		$result = $coll->getAllDocs();
+		$data = array();
+		foreach($result->rows as $r) {
+  		$item = $coll->getDoc($r->id);
+	    $item->keyname = $item->_id;
+		  $match = false;
+	    foreach ($criteria as $c) 
+		    foreach ($c as $k=>$v)
+          if ($item->$k == $v)
+            $match = true;
+		  if ($match)
+		    $data[] = $item;
 		}
-		$result = $coll->getDoc($criteria["_id"]);
-		
-		foreach ($newobj as $k => $v) {
-		}
-		
-		$result->$k = $v;
-		return $result;
-	
+		foreach($data as $doc)
+		  $coll->storeDoc($doc);
+		  
 	}
 	
 	function insert_doc( $doc, $collname ) {
-	
-		$coll = new couchClient(DATABASE_HOST.":".DATABASE_PORT,$this->name."_".$collname);
-		if ( !$coll->databaseExists() ) {
-		$coll->createDatabase();
-		}
+	  
+    if (!isset($doc->_id))
+      $doc->_id = md5(uniqid(rand(),true));
+  	$coll = new couchClient('https://'.DATABASE_USER.":".DATABASE_PASSWORD."@".DATABASE_HOST.":".DATABASE_PORT,$this->name."_".$collname);
+		if ( !$coll->databaseExists() )
+		  $coll->createDatabase();
 		$document = new couchDocument($coll);
 		$document->set($doc);
 		
@@ -1196,19 +1222,38 @@ class MulletCouchDB extends MulletDatabase {
 	}
 	
 	function find( $collname, $criteria = false ) {
-		
-		$coll = new couchClient(DATABASE_HOST.":".DATABASE_PORT,$this->name."_".$collname);
-		if ( !$coll->databaseExists() ) {
-		$coll->createDatabase();
+
+		$coll = new couchClient('https://'.DATABASE_USER.":".DATABASE_PASSWORD."@".DATABASE_HOST.":".DATABASE_PORT,$this->name."_".$collname);
+		if ( !$coll->databaseExists() )
+		  $coll->createDatabase();
+		$result = $coll->getAllDocs();
+		$data = array();
+		foreach($result->rows as $r) {
+  		$result = $coll->getDoc($r->id);
+		  $item = new stdClass;
+  		foreach($result as $k=>$v)
+  		  if (!in_array($k,array('_rev','_id')))
+  		    $item->$k = $v;
+  	  if (!isset($item->id))
+  	    $item->id = $result->_id;
+	    $item->keyname = $result->_id;
+  	  if (!$criteria)
+  		  $data[] = $item;
+  		else {
+  		  $match = false;
+  		    foreach ($criteria as $k=>$v) {
+            if ($item->$k == $v)
+              $match = true;
+  				}
+  		  if ($match)
+  		    $data[] = $item;
+  		}
 		}
-		$result = $coll->getDoc($criteria["_id"]);
-		return $result;
-		   
+	  return new MulletIterator($data);
 		
 	}
 	
 	function find_one( $collname, $criteria = false ) {
-		
 		
 	}
    
