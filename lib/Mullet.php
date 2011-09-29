@@ -77,7 +77,9 @@ class Mullet {
 	      break;
 		  case 'mongodb':
 	      $this->dbclass = 'MulletMongoDB';
-			    $this->conn = new Mongo();
+			  $this->conn = new Mongo(
+			    "mongodb://".DATABASE_USER.":".DATABASE_PASSWORD."@".DATABASE_HOST.":".DATABASE_PORT."/".DATABASE_NAME
+			  );
 	      break;
   		case 'couchdb':
         require_once 'lib/couch.php';
@@ -470,6 +472,8 @@ class MulletMySQL extends MulletDatabase {
 		    $query .= "$k BLOB(512),";
 		  elseif (is_string($k) && is_integer($v))
 		    $query .= "$k int(11),";
+		  elseif (is_string($k) && is_integer((integer)$v))
+		    $query .= "$k int(11),";
     $query .= " 
       keyname VARCHAR(255) PRIMARY KEY NOT NULL UNIQUE,
       jsonval TEXT )";
@@ -624,7 +628,7 @@ class MulletMySQL extends MulletDatabase {
   	if (class_exists('PDO')) {
 			try {
 		    $statement = $this->conn->prepare( $query );
-		    $statement->execute( $vals );
+		    $statement->execute();
 			} catch (PDOException $err) {
 				echo $err->getMessage();
 			}
@@ -1076,27 +1080,57 @@ class MulletMongoDB extends MulletDatabase {
    }
    
    function remove_doc( $criteria, $collname ) {
-	   //print_r($criteria);
-//	   exit;
-	   $dbname = $this->name;
-	   $db = $this->conn->$dbname;
-	   $coll = $db->$collname;
-	   $coll->remove($criteria);
+
+     $dbname = DATABASE_NAME;
+     $db = $this->conn->$dbname;
+     $collname = $this->name."_".$collname;
+     $coll = $db->$collname;
+     $crit = array();
+     foreach ($criteria as $c) {
+      if (isset($c['id'])) {
+        $mongoID = new MongoID($c['id']);
+        $c['_id'] = $mongoID;
+        unset($c['id']);
+      }
+      foreach($c as $k=>$v)
+        $crit[$k] = $v;
+     }
+     $coll->remove($crit,true);
+
    }
 
    function update_doc( $criteria, $newobj, $collname ) {
-	   $dbname = $this->name;
-	   $db = $this->conn->$dbname;
-	   $coll = $db->$collname;
-	   $coll->update($criteria,$newobj,array("multiple"=>true));
+
+     $dbname = DATABASE_NAME;
+     $db = $this->conn->$dbname;
+     $collname = $this->name."_".$collname;
+     $coll = $db->$collname;
+     $crit = array();
+     foreach ($criteria as $c) {
+      if (isset($c['id'])) {
+        $mongoID = new MongoID($c['id']);
+        $c['_id'] = $mongoID;
+        unset($c['id']);
+      }
+      foreach($c as $k=>$v)
+        $crit[$k] = $v;
+     }
+     if (isset($newobj[0]['id']))
+       unset($newobj[0]['id']);
+     if (isset($newobj[0]['ok']))
+       unset($newobj[0]['ok']);
+     $coll->update($crit,array('$set'=>$newobj[0]),array("multiple"=>true));
 
    }
 
    function insert_doc( $doc, $collname ) {
-	   $dbname = $this->name;
-	   $db = $this->conn->$dbname;
-	   $coll = $db->$collname;
-	   $coll->insert($doc);
+
+      $dbname = DATABASE_NAME;
+      $db = $this->conn->$dbname;
+      $collname = $this->name."_".$collname;
+      $coll = $db->$collname;
+      $coll->insert($doc);
+
    }
 
 function count( $collname ) {
@@ -1106,28 +1140,41 @@ function validate_uniqueness_of( $collname, $key, $newval ) {
 }
 
 function find( $collname, $criteria = false ) {
-	
-	$dbname = $this->name;
+
+	$dbname = DATABASE_NAME;
 	$db = $this->conn->$dbname;
+	$collname = $this->name."_".$collname;
 	$coll = $db->$collname;
-	if (!$criteria) $result = $coll->find();
+	$data = array();
+	if (!$criteria)
+	  $cursor = $coll->find();
 	else
-	$result = $coll->find($criteria);
-	return $result;
-	//foreach ($obj as $key=>$val)
-//      if (in_array($key,array('keyname','jsonval')))
-	
-	//return new MulletIterator($result->results);
-	//foreach ($cursor as $obj) {
-//		echo $obj[$criteria] . " ";
-//	}
-	
-	//foreach ($cursor as $obj) {
-//		echo $obj[$criteria] . "\n";
-//	}
-	
-	   
-	
+	  $cursor = $coll->find($criteria);
+  foreach ($cursor as $doc) {
+    $result = (array)$doc;
+	  $item = new stdClass;
+    $_id = $result['_id'];
+    $key = '$id';
+		foreach($result as $k=>$v)
+		  if (!in_array($k,array('_id')))
+		    $item->$k = $v;
+	  if (!isset($item->id))
+	    $item->id = $_id->$key;
+    $item->keyname = $_id->$key;
+	  if (!$criteria)
+		  $data[] = $item;
+		else {
+		  $match = false;
+		    foreach ($criteria as $k=>$v) {
+          if ($item->$k == $v)
+            $match = true;
+				}
+		  if ($match)
+		    $data[] = $item;
+		}
+	}
+  return new MulletIterator($data);
+
 }
 
    function find_one( $collname ) {
