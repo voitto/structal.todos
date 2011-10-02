@@ -11,33 +11,31 @@ define( 'DATABASE_PORT',      5432); // 3306/mysql | 5432/pgsql | 443
 
 
 
-require 'lib/Klein.php';
+require 'lib/Moor.php';
 
-respond( 'GET',      '/changes',                 'changes' );
-respond( 'GET',      '/[:resource]',             'constructor' );
-respond( 'POST',     '/[:resource]',             'constructor' );
-respond( 'PUT',      '/[:resource]/[:id]',       'constructor' );
-respond( 'DELETE',   '/[:resource]/[:id]',       'constructor' );
-respond( 'GET',      '/[:resource]/[:action]',   'constructor' );
-respond( 'POST',     '/[:resource]/[:action]',   'constructor' );
-respond( 'GET',      '/',                        'index' );
+Moor::route( '/changes', 'changes' );
+Moor::route( '/:resource/:id', 'constructor' );
+Moor::route( '/:resource', 'constructor' );
+Moor::route( '/', 'index' );
+Moor::run();
+
 
 // JSON
 
-function constructor($request,$response) {
+function constructor() {
   require 'lib/Mullet.php';
-  $model = 'mdl/'.$request->resource.".php";
+  $model = 'mdl/'.$_GET['resource'].".php";
   if (file_exists($model)) include $model;
-  $action = strtolower($request->method());
-  if (isset($request->action))
-    $action = $request->action;
-  $mapper = ucwords($request->resource);
+  $action = strtolower($_SERVER['REQUEST_METHOD']);
+  if (isset($_GET['action']))
+    $action = $_GET['action'];
+  $mapper = ucwords($_GET['resource']);
   if (class_exists($mapper))
     $obj = new $mapper;
   header('HTTP/1.1 200 OK');
   header('Content-Type: application/json');
   if (isset($obj) && method_exists($obj,$action))
-    echo json_encode($obj->$action($request,$response))."\n";
+    echo json_encode($obj->$action())."\n";
   else
     echo json_encode(array(
       'error'=>'internal error',
@@ -47,7 +45,7 @@ function constructor($request,$response) {
 
 // HTML
 
-function index($request,$response) {
+function index() {
   require 'lib/Mustache.php';
   $m = new Mustache;
   session_start();
@@ -56,5 +54,3 @@ function index($request,$response) {
     $params['username'] = $_SESSION['current_user'];
   echo $m->render(file_get_contents('tpl/index.html'),$params);
 }
-
-dispatch();
