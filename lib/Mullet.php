@@ -459,6 +459,67 @@ class MulletRemote extends MulletDatabase {
 
 class MulletMySQL extends MulletDatabase {
 
+	function create_fields_if_not_exists( $doc, $name ) {
+	  
+		$table = $this->name."_".$name;
+    $sql = "SHOW columns FROM ".$table;
+
+		if (class_exists('PDO')) {
+
+  		try {
+  		    $statement = $this->conn->prepare( $sql );
+  		    $statement->execute();
+  		    $results = $statement->fetchAll(PDO::FETCH_CLASS,get_class((object)array()));
+  				$columns = array();
+  				foreach($results as $k=>$v)
+  				  $columns[] = $v->Field;
+  		    foreach ($doc as $k=>$v)
+  		      if (in_array($k,$columns))
+  		        continue;
+  			    elseif (is_string($k) && is_array($v))
+  				    $this->conn->query( 'ALTER TABLE '.$table.' ADD COLUMN '.$k.' longblob' );
+  				  elseif (is_string($k) && is_string($v))
+  				    $this->conn->query( 'ALTER TABLE '.$table.' ADD COLUMN '.$k.' text' );
+  				  elseif (is_string($k) && is_object($v))
+  				    $this->conn->query( 'ALTER TABLE '.$table.' ADD COLUMN '.$k.' longblob' );
+  				  elseif (is_string($k) && is_integer($v))
+  				    $this->conn->query( 'ALTER TABLE '.$table.' ADD COLUMN '.$k.' integer' );
+    			  elseif (is_string($k) && is_integer((integer)$v))
+  				    $this->conn->query( 'ALTER TABLE '.$table.' ADD COLUMN '.$k.' integer' );
+  		} catch (PDOException $err) {
+  			echo $err->getMessage();
+  		}
+
+		  
+		} else {
+			
+
+	    $result = mysql_query( $sql );
+			$columns = array();
+	    while ($v = mysql_fetch_assoc($result))
+    	  $columns[] = $v['Field'];
+	    foreach ($doc as $k=>$v)
+	      if (in_array($k,$columns))
+	        continue;
+		    elseif (is_string($k) && is_array($v))
+    	    $result = mysql_query( 'ALTER TABLE '.$table.' ADD COLUMN '.$k.' longblob'  );
+			  elseif (is_string($k) && is_string($v))
+    	    $result = mysql_query('ALTER TABLE '.$table.' ADD COLUMN '.$k.' text' );
+			  elseif (is_string($k) && is_object($v))
+    	    $result = mysql_query('ALTER TABLE '.$table.' ADD COLUMN '.$k.' longblob' );
+			  elseif (is_string($k) && is_integer($v))
+    	    $result = mysql_query( 'ALTER TABLE '.$table.' ADD COLUMN '.$k.' integer'  );
+			  elseif (is_string($k) && is_integer((integer)$v))
+    	    $result = mysql_query( 'ALTER TABLE '.$table.' ADD COLUMN '.$k.' integer' );
+
+
+		  
+		}
+
+
+	}
+
+
 	function create_if_not_exists( $doc, $name ) {
     $query = "CREATE TABLE IF NOT EXISTS ".$this->name."_".$name." (";
     foreach ($doc as $k=>$v)
@@ -481,6 +542,7 @@ class MulletMySQL extends MulletDatabase {
 			$this->conn->query($query);
 		else
 			mysql_query( $query );
+		$this->create_fields_if_not_exists( $doc, $name );
 	}
 
 	function insert_doc( $doc, $collname ) {
@@ -612,7 +674,7 @@ class MulletMySQL extends MulletDatabase {
 	    unset($criteria['limit']);
     }
 	  $results = false;
-    $query = "SELECT keyname, jsonval FROM ".$this->name."_".$collname;
+    $query = "SELECT * FROM ".$this->name."_".$collname;
 	  if ($criteria)
 	    $query .= " WHERE ";
 	  $and = '';
