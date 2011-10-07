@@ -14,7 +14,7 @@ define( 'DATABASE_PORT',      5432); // 3306/mysql | 5432/pgsql | 443
 require 'lib/Moor.php';
 
 Moor::route( '/changes', 'changes' );
-Moor::route( '/:resource/:id', 'constructor' );
+Moor::route( '/:resource/:id([0-9A-Za-z_-]+)', 'constructor' );
 Moor::route( '/:resource', 'constructor' );
 Moor::route( '/', 'index' );
 Moor::run();
