@@ -50,8 +50,9 @@ jQuery(function($){
     },
 
     render: function(){
+      var el = this;
       $.get('tpl/tasks/_show.html', function(data) {
-        this.html(Mustache.to_html(data, this.item));
+        el.html(Mustache.to_html(data, el.item));
       });
       return this;
     },
