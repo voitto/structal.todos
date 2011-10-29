@@ -50,7 +50,9 @@ jQuery(function($){
     },
 
     render: function(){
-      this.html($("#taskTemplate").tmpl(this.item));
+      $.get('tpl/tasks/_show.html', function(data) {
+        this.html(Mustache.to_html(data, this.item));
+      });
       return this;
     },
     
