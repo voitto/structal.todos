@@ -14,6 +14,8 @@
 // Twitter: http://rp.ly/4h
 
 
+
+
 class Mullet {
 	
 	public $conn;
@@ -1117,40 +1119,6 @@ class MulletIterator implements Iterator {
 }
 
 
-class MulletMapper {
-	
-	var $keys = array();
-	var $filters = array();
-	var $rels = array();
-	
-	function key( $k, $type ) {
-		$this->keys[] = array($k=>$type);
-	}
-	
-	function validates_uniqueness_of( $k ) {
-		$this->filters[] = array($k,'unique');
-	}
-
-	function many( $rel ) {
-		$this->rels[] = array($rel=>'many');
-	}
-	
-}
-
-function json_emit($data) {
-	header('HTTP/1.1 200 OK');
-	header('Content-Type: application/json');
-	echo json_encode($data)."\n";
-	exit;
-};
-
-
-function json_error($data) {
-	header('HTTP/1.1 200 OK');
-	header('Content-Type: application/json');
-	echo json_encode(array('ok'=>false,'error'=>$data))."\n";
-	die;
-};
 
 
 

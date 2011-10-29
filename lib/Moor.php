@@ -1390,13 +1390,224 @@ class MoorNotFoundException extends MoorException {}
  * @link       http://github.com/jeffturcotte/moor
  * @version    1.0.0b4
  */
-class MoorActionController extends MoorAbstractController  {
+class Controller extends MoorAbstractController  {
 	/**
 	 * Create an instance to encapsulate all controller logic
 	 *
 	 * @return void
 	 */
+	 var $access_list = array();
+	 
+	 function member_of() {
+	   return false;
+	 }
+	 
+	 function let_access( $fields ) {
+     $this->let_read( $fields );
+     $this->let_write( $fields );
+     $this->let_create( $fields );
+     $this->let_delete( $fields );
+     $this->let_superuser( $fields );
+   }
+
+   function let_read( $fields ) {
+     $args = explode( " ", $fields );
+     if (!(count($args)>0)) trigger_error( "invalid data model access rule", E_USER_ERROR );
+     foreach ( $args as $str) {
+       $pair = split( ":", $str );
+       if (!(count($pair)==2)) trigger_error( "invalid data model access rule", E_USER_ERROR );
+       if ($pair[0] == 'all') {
+         foreach ( $this->field_array as $field => $data_type ) {
+           if (!(in_array($pair[1],$this->access_list['read'][$field])))
+             $this->access_list['read'][$field][] = $pair[1];
+         }
+       } else {
+         if (!(in_array($pair[1],$this->access_list['read'][$pair[0]])))
+           $this->access_list['read'][$pair[0]][] = $pair[1];
+       }
+     }
+   }
+
+   function let_write( $fields ) {
+     $args = explode( " ", $fields );
+     if (!(count($args)>0)) trigger_error( "invalid data model access rule", E_USER_ERROR );
+     foreach ( $args as $str) {
+       $pair = split( ":", $str );
+       if (!(count($pair)==2)) trigger_error( "invalid data model access rule", E_USER_ERROR );
+       if ($pair[0] == 'all') {
+         foreach ( $this->field_array as $field => $data_type ) {
+           if (!(in_array($pair[1],$this->access_list['write'][$field])))
+             $this->access_list['write'][$field][] = $pair[1];
+         }
+       } else {
+         if (!(in_array($pair[1],$this->access_list['write'][$pair[0]])))
+           $this->access_list['write'][$pair[0]][] = $pair[1];
+       }
+     }
+   }
+
+   function let_create( $fields ) {
+     $args = explode( " ", $fields );
+     if (!(count($args)>0)) trigger_error( "invalid data model access rule", E_USER_ERROR );
+     $this->let_write( $fields );
+     foreach ( $args as $str) {
+       $pair = split( ":", $str );
+       if (!(count($pair)==2)) trigger_error( "invalid data model access rule", E_USER_ERROR );
+       if (!(isset($this->access_list['create'][$this->table][$pair[1]])))
+         $this->access_list['create'][$this->table][] = $pair[1];
+     }
+   }
+
+   function let_post( $fields ) {
+     $this->let_create( $fields );
+   }
+
+   function let_modify( $fields ) {
+     $this->let_write( $fields );
+   }
+
+   function let_put( $fields ) {
+     $this->let_write( $fields );
+   }
+
+   function let_delete( $fields ) {
+     $args = explode( " ", $fields );
+     if (!(count($args)>0)) trigger_error( "invalid data model access rule", E_USER_ERROR );
+     foreach ( $args as $str) {
+       $pair = split( ":", $str );
+       if (!(count($pair)==2)) trigger_error( "invalid data model access rule", E_USER_ERROR );
+       if (!(isset($this->access_list['delete'][$this->table][$pair[1]])))
+         $this->access_list['delete'][$this->table][] = $pair[1];
+     }
+   }
+
+   function let_superuser( $fields ) {
+     $args = explode( " ", $fields );
+     if (!(count($args)>0)) trigger_error( "invalid data model access rule", E_USER_ERROR );
+     foreach ( $args as $str) {
+       $pair = split( ":", $str );
+       if (!(count($pair)==2)) trigger_error( "invalid data model access rule", E_USER_ERROR );
+       if (!(isset($this->access_list['superuser'][$this->table][$pair[1]])))
+         $this->access_list['superuser'][$this->table][] = $pair[1];
+     }
+   }
+
+   function can($action) {
+     if (in_array($action,array('read','write'))) {
+       $func = "can_".$action."_fields";
+       if (!($this->$func($this->field_array)))
+         return false;
+       return true;
+     }
+     if (in_array($action,array('create','delete'))) {
+       $func = "can_".$action;
+       if (!($this->$func($this->table)))
+         return false;
+       return true;
+     }
+   }
+
+   function can_write_fields( $fields ) {
+     $return = false;
+     foreach( $fields as $key=>$val ) {
+       if ( $this->can_write( $key ) ) {
+         $return = true;
+       } else {
+         return false;
+       }
+     }
+     return $return;
+   }
+
+   function can_read_fields( $fields ) {
+     $return = false;
+     // array of field=>datatype
+     foreach( $fields as $key=>$val ) {
+       if ( $this->can_read( $key ) ) {
+         $return = true;
+       } else {
+         return false;
+       }
+     }
+     return $return;
+   }
+
+
+
+   function can_read( $resource ) {
+     if (!(isset($this->access_list['read'][$resource]))) return false;
+     foreach ( $this->access_list['read'][$resource] as $callback ) {
+       if ( function_exists( $callback ) ) {
+         if ($callback())
+           return true;
+       } else {
+         if ( $this->member_of( $callback ))
+           return true;
+       }
+     }
+     return false;
+   }
+
+   function can_write( $resource ) {
+     if (!(isset($this->access_list['write'][$resource]))) return false;
+     foreach ( $this->access_list['write'][$resource] as $callback ) {
+       if ( function_exists( $callback ) ) {
+         if ($callback())
+           return true;
+       } else {
+         if ( $this->member_of( $callback ))
+           return true;
+       }
+     }
+     return false;
+   }
+
+   function can_create( $resource ) {
+     if (!(isset($this->access_list['create'][$resource]))) return false;
+     foreach ( $this->access_list['create'][$resource] as $callback ) {
+       if ( function_exists( $callback ) ) {
+         if ($callback())
+           return true;
+       } else {
+         if ( $this->member_of( $callback ))
+           return true;
+       }
+     }
+     return false;
+   }
+
+   function can_delete( $resource ) {
+     if (!(isset($this->access_list['delete'][$resource]))) return false;
+     foreach ( $this->access_list['delete'][$resource] as $callback ) {
+       if ( function_exists( $callback ) ) {
+         if ($callback())
+           return true;
+       } else {
+         if ( $this->member_of( $callback ))
+           return true;
+       }
+     }
+     return false;
+   }
+
+   function can_superuser( $resource ) {
+     if (!(isset($this->access_list['superuser'][$resource]))) return false;
+     foreach ( $this->access_list['superuser'][$resource] as $callback ) {
+       if ( function_exists( $callback ) ) {
+         if ($callback())
+           return true;
+       } else {
+         if ( $this->member_of( $callback ))
+           return true;
+       }
+     }
+     return false;
+   }
+
+	 
 	public function __construct() {
+	  if (method_exists($this,'init'))
+	    $this->init();
 		$this->beforeAction();
 		
 		try {

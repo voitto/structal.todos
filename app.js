@@ -1,152 +1,184 @@
-// Create the Task model.
-var Task = Spine.Model.setup("Task", ["name", "done"]);
 
-// Persist model between page reloads.
+var Task = Spine.Model.sub();
+
+Task.configure("Task", "name", "done");
+
 Task.extend(Spine.Model.Ajax);
 
+
 Task.extend({
-  // Return all active tasks.
   active: function(){
-    return(this.select(function(item){ return !item.done; }));
+    return this.select(function(item) {
+       return !item.done;
+     });
   },
-
-  // Return all done tasks.
   done: function(){
-    return(this.select(function(item){ return !!item.done; }));    
+    return this.select(function(item) {
+       return !!item.done;
+     });
   },
-
-  // Clear all done tasks.
   destroyDone: function(){
-    jQuery(this.done()).each(function(i, rec){ rec.destroy(); });
+     var rec, _i, _len, _ref, _results;
+      _ref = this.done();
+      _results = [];
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        rec = _ref[_i];
+        _results.push(rec.destroy());
+      }
+      return _results;
   }
 });
 
-
-
-
 jQuery(function($){
   
-  tpl = '';
-	$.ajax({
-    type : 'GET',
-		url : '/tpl/tasks/_show.html',
-    success : function(req) {
-      tpl = req;
-    }
-  });
-  
-  window.Tasks = Spine.Controller.create({
-    tag: "li",
-    
-    proxied: ["render", "remove"],
+  var Tasks = Spine.Controller.sub({
     
     events: {
       "change   input[type=checkbox]": "toggle",
-      "click    .destroy":             "destroy",
-      "dblclick .view":                "edit",
-      "keypress input[type=text]":     "blurOnEnter",
-      "blur     input[type=text]":     "close"
+      "click    .destroy": "remove",
+      "dblclick .view": "edit",
+      "keypress input[type=text]": "blurOnEnter",
+      "blur     input[type=text]": "close"
     },
     
     elements: {
-      "input[type=text]": "input",
-      ".item": "wrapper"
+       "input[type=text]": "input"
     },
-    
+
     init: function(){
-      this.item.bind("update",  this.render);
-      this.item.bind("destroy", this.remove);
+      this.item.bind("update", this.proxy(this.render));
     },
-    
+
     render: function(){
-      this.el.html(Mustache.to_html(tpl, this.item));
-      this.refreshElements();
+      this.html($("#taskTemplate").tmpl(this.item));
       return this;
     },
     
-    toggle: function(){
+    toggle:function(){
       this.item.done = !this.item.done;
-      this.item.save();      
-    },
-    
-    destroy: function(){
-      this.item.destroy();
-    },
-    
-    edit: function(){
-      this.wrapper.addClass("editing");
-      this.input.focus();
-    },
-    
-    blurOnEnter: function(e) {
-      if (e.keyCode == 13) e.target.blur();
-    },
-    
-    close: function(){
-      this.wrapper.removeClass("editing");
-      this.item.updateAttributes({name: this.input.val()});
+      return this.item.save();
     },
     
     remove: function(){
-      this.el.remove();
-    }
-  });
-  
-  window.TaskApp = Spine.Controller.create({
-    el: $("#tasks"),
-    
-    proxied: ["addOne", "addAll", "renderCount"],
+       return this.item.destroy();
+    },
 
+    edit: function(){
+      this.el.addClass("editing");
+      return this.input.focus();
+    },
+
+    blurOnEnter: function(){
+       if (e.keyCode === 13) {
+          return e.target.blur();
+        }
+    },
+    
+    close: function(){
+        this.el.removeClass("editing");
+        return this.item.updateAttributes({
+          name: this.input.val()
+        });
+    }
+
+  });
+
+  var TaskApp = Spine.Controller.sub({
+    
     events: {
-      "submit form":   "create",
+      "submit form": "create",
       "click  .clear": "clear"
     },
-
+    
     elements: {
-      ".items":     "items",
-      ".countVal":  "count",
-      ".clear":     "clear",
+      ".items": "items",
+      ".countVal": "count",
+      ".clear": "clear",
       "form input": "input"
     },
-    
+
     init: function(){
-      Task.bind("create",  this.addOne);
-      Task.bind("refresh", this.addAll);
-      Task.bind("refresh change", this.renderCount);
+      Task.bind("create", this.proxy(this.addOne));
+      Task.bind("refresh", this.proxy(this.addAll));
+      Task.bind("refresh change", this.proxy(this.renderCount));
       Task.fetch();
+      setInterval(this.poll, 5*1000);
     },
     
-    addOne: function(task) {
-      var view = Tasks.init({item: task});
-      this.items.append(view.render().el);
+    poll: function() {
+      $.ajax({
+        contentType: 'application/json',
+        dataType: 'json',
+  			type : 'GET',
+        url : '/tasks/changes',
+        success : function(data) {
+          var taskid = [];
+          Task.each(function(t) {
+            taskid.push(t.id);
+          });
+          for (n in data.results) {
+            if (-1 == ($.inArray(data.results[n].id, taskid))) {
+              $.ajax({
+                contentType: 'application/json',
+                dataType: 'json',
+                type: 'GET',
+                url: '/tasks/'+data.results[n].id,
+                success: function(data){
+                  for (newrec in data) {
+                    Task.create({
+                      name: data[newrec].name,
+                      done: data[newrec].done,
+                      id: data[newrec].id
+                    });
+                  }
+                }
+              });
+            }
+          }
+        }
+      });
+    },
+    
+    create: function(e){
+      e.preventDefault();
+      Task.create({
+        name: this.input.val()
+      });
+      return this.input.val("");
     },
 
-    addAll: function() {
-      Task.each(this.addOne);
+    addOne: function(task){
+      var view;
+      view = new Tasks({
+        item: task
+      });
+      return this.items.append(view.render().el);
     },
-        
-    create: function(){
-      Task.create({name: this.input.val()});
-      this.input.val("");
-      return false;
+
+    addAll: function(){
+      return Task.each(this.proxy(this.addOne));
     },
     
     clear: function(){
-      Task.destroyDone();
+       return Task.destroyDone();
     },
     
     renderCount: function(){
-      var active = Task.active().length;
+      var active, inactive;
+      active = Task.active().length;
       this.count.text(active);
-      
-      var inactive = Task.done().length;
-      this.clear[inactive ? "show" : "hide"]();
+      inactive = Task.done().length;
+      if (inactive) {
+        return this.clear.show();
+      } else {
+        return this.clear.hide();
+      }
     }
+
   });
   
-  window.App = TaskApp.init();
-
-
-  
+  return new TaskApp({
+    el: $("#tasks")
+  });
 
 });
