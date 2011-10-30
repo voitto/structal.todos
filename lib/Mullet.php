@@ -620,6 +620,7 @@ class MulletMySQL extends MulletDatabase {
 
 	function update_doc( $criteria, $newobj, $collname ) {
 		  $query = "UPDATE ".$this->name."_".$collname." SET ";
+		  $vals = array();
 	    foreach ($newobj as $n)
 		    foreach ($n as $k=>$v)
 		      if (is_string($k) && is_array($v))
@@ -847,6 +848,7 @@ class MulletPostgreSQL extends MulletDatabase {
 			  $this->create_fields_if_not_exists( $n, $collname );
 		  
 		  $query = "UPDATE ".$this->name."_".$collname." SET ";
+		  $vals = array();
 
 		  if (!is_array($newobj[0]))
 		    $newobj = array($newobj);
