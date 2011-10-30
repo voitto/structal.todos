@@ -132,8 +132,7 @@ class Mullet {
 				if (class_exists('PDO')) {
 			    $query = "CREATE TABLE ".mysql_escape_string($table)." (";
 			    $query .= " 
-			         keyname VARCHAR(255) PRIMARY KEY NOT NULL UNIQUE,
-			         jsonval TEXT
+			         keyname VARCHAR(255) PRIMARY KEY NOT NULL UNIQUE
 			    )";
 					$result = $this->conn->query( $query );
 				} else {
@@ -143,8 +142,7 @@ class Mullet {
 				if (class_exists('PDO')) {
 			    $query = "CREATE TABLE ".pg_escape_string($table)." (";
 			    $query .= " 
-			         keyname VARCHAR(255) PRIMARY KEY NOT NULL UNIQUE,
-			         jsonval TEXT
+			         keyname VARCHAR(255) PRIMARY KEY NOT NULL UNIQUE
 			    )";
 					$result = $this->conn->query( $query );
 				} else {
@@ -540,8 +538,8 @@ class MulletMySQL extends MulletDatabase {
 		  elseif (is_string($k) && is_integer((integer)$v))
 		    $query .= "$k int(11),";
     $query .= " 
-      keyname VARCHAR(255) PRIMARY KEY NOT NULL UNIQUE,
-      jsonval TEXT )";
+      keyname VARCHAR(255) PRIMARY KEY NOT NULL UNIQUE
+       )";
 		if (class_exists('PDO'))
 			$this->conn->query($query);
 		else
@@ -568,14 +566,13 @@ class MulletMySQL extends MulletDatabase {
 	  $query = "REPLACE INTO ".$this->name."_".$collname." (";
 	  foreach(array_keys($vals) as $k)
 	    $query .= substr($k,1).",";
-	  $query .= "keyname,jsonval) VALUES (";
+	  $query .= "keyname) VALUES (";
 
 		if (class_exists('PDO')) {
 		  foreach(array_keys($vals) as $k)
 		    $query .= "$k,";
-	    $query .= ":keyname,:jsonval);";
+	    $query .= ":keyname);";
       $vals[':keyname'] = md5(uniqid(rand(), true));
-	    $vals[':jsonval'] = serialize( $doc );
 			try {
 				  $statement = $this->conn->prepare( $query );
 			    $statement->execute( $vals );
@@ -623,7 +620,6 @@ class MulletMySQL extends MulletDatabase {
 
 	function update_doc( $criteria, $newobj, $collname ) {
 		  $query = "UPDATE ".$this->name."_".$collname." SET ";
-		  $vals = array( ':jsonval' => serialize( $newobj ) );
 	    foreach ($newobj as $n)
 		    foreach ($n as $k=>$v)
 		      if (is_string($k) && is_array($v))
@@ -731,27 +727,19 @@ class MulletMySQL extends MulletDatabase {
 	  $return = array();
 	  $results = array();
   	if (class_exists('PDO')) {
-	    $query = "SELECT keyname, jsonval FROM ".$this->name."_".$collname." LIMIT 1";
+	    $query = "SELECT keyname FROM ".$this->name."_".$collname." LIMIT 1";
 	    $statement = $this->conn->prepare($query);
 	    $statement->execute();
 	    $results = $statement->fetchAll(PDO::FETCH_CLASS,get_class((object)array()));
 	    $name = $results[0]->keyname;
-	    $value = $results[0]->jsonval;
 		} else {
-	    $query = "SELECT keyname, jsonval FROM ".$this->name."_".$collname." LIMIT 1";
+	    $query = "SELECT keyname FROM ".$this->name."_".$collname." LIMIT 1";
 			$result = mysql_query( $query );
 			$results = mysql_fetch_assoc( $result );
 			$name = $results['keyname'];
-			$value = $results['jsonval'];
 		}
     if (!(count($results)>0)) return new MulletDocument(0);
     $return['_id'] = new MulletDocument( $name );
-    $obj = unserialize( $value );
-    foreach($obj as $key=>$val)
-      if (is_object($val))
-        $return[$key] = (array)$val;
-      else
-        $return[$key] = $val;
     return $return;
 	}
 	
@@ -821,8 +809,8 @@ class MulletPostgreSQL extends MulletDatabase {
 		  elseif (is_string($k) && is_integer($v))
 		    $query .= "$k bigint,";
     $query .= " 
-         keyname VARCHAR(255) PRIMARY KEY NOT NULL UNIQUE,
-         jsonval TEXT
+         keyname VARCHAR(255) PRIMARY KEY NOT NULL UNIQUE
+         
     )";
 		if (class_exists('PDO')) {
 			$this->conn->query( $query );
@@ -859,7 +847,7 @@ class MulletPostgreSQL extends MulletDatabase {
 			  $this->create_fields_if_not_exists( $n, $collname );
 		  
 		  $query = "UPDATE ".$this->name."_".$collname." SET ";
-		  $vals = array( ':jsonval' => serialize( $newobj ) );
+
 		  if (!is_array($newobj[0]))
 		    $newobj = array($newobj);
 	    foreach ($newobj as $n)
@@ -928,12 +916,11 @@ class MulletPostgreSQL extends MulletDatabase {
 		  $query = "INSERT INTO ".$this->name."_".$collname." (";
 		  foreach(array_keys($vals) as $k)
 		    $query .= substr($k,1).",";
-		  $query .= "keyname,jsonval) VALUES (";
+		  $query .= "keyname) VALUES (";
 		  foreach(array_keys($vals) as $k)
 		    $query .= "$k,";
-	    $query .= ":keyname,:jsonval);";
+	    $query .= ":keyname);";
       $vals[':keyname'] = md5(uniqid(rand(), true));
-	    $vals[':jsonval'] = serialize( $doc );
 	    if (isset($obj))
 				foreach($obj->filters as $arr)
 					if ($arr[1] == 'unique')
@@ -1022,23 +1009,16 @@ class MulletPostgreSQL extends MulletDatabase {
 	  $return = array();
 	  $results = array();
   	if (class_exists('PDO')) {
-	    $query = "SELECT keyname, jsonval FROM ".$this->name."_".$collname." LIMIT 1";
+	    $query = "SELECT keyname FROM ".$this->name."_".$collname." LIMIT 1";
 	    $statement = $this->conn->prepare($query);
 	    $statement->execute();
 	    $results = $statement->fetchAll(PDO::FETCH_CLASS,get_class((object)array()));
 	    $name = $results[0]->keyname;
-	    $value = $results[0]->jsonval;
 		} else {
 			// XXX
 		}
     if (!(count($results)>0)) return new MulletDocument(0);
     $return['_id'] = new MulletDocument( $name );
-    $obj = unserialize( $value );
-    foreach($obj as $key=>$val)
-      if (is_object($val))
-        $return[$key] = (array)$val;
-      else
-        $return[$key] = $val;
     return $return;
 	}
 	
@@ -1049,8 +1029,7 @@ class MulletSQLite extends MulletDatabase {
 
 	function create_if_not_exists( $doc, $name ) {
     $query = "CREATE TABLE IF NOT EXISTS ".$this->name."_".$name." (
-          \"keyname\" VARCHAR PRIMARY KEY NOT NULL UNIQUE,
-          \"jsonval\" TEXT 
+          \"keyname\" VARCHAR PRIMARY KEY NOT NULL UNIQUE
     )";
 		if (class_exists('PDO')) {
 			$result = $this->conn->query( $query );
@@ -1061,7 +1040,7 @@ class MulletSQLite extends MulletDatabase {
 
 	function insert_doc( $doc, $collname ) {
 		if (class_exists('PDO')) {
-		  $query = "INSERT OR REPLACE INTO ".$this->name."_".$collname." (keyname,jsonval) VALUES (:name,:value);";
+		  $query = "INSERT OR REPLACE INTO ".$this->name."_".$collname." (keyname,value) VALUES (:name,:value);";
 	    $statement = $this->conn->prepare( $query );
 	    $statement->execute(array(':name'=>md5(uniqid(rand(), true)),':value'=>serialize( $doc )));
 		} else {

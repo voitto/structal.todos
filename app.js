@@ -127,13 +127,11 @@ jQuery(function($){
                 type: 'GET',
                 url: '/tasks/'+data.results[n].id,
                 success: function(data){
-                  for (newrec in data) {
-                    Task.create({
-                      name: data[newrec].name,
-                      done: data[newrec].done,
-                      id: data[newrec].id
-                    });
-                  }
+                  Task.create({
+                    name: data[0].name,
+                    done: data[0].done,
+                    id: data[0].id
+                  });
                 }
               });
             }
