@@ -15,6 +15,16 @@
 
 
 
+if (isset($config)) {
+
+  define( 'DATABASE_HOST',      $config[0]);
+  define( 'DATABASE_USER',      $config[1]);
+  define( 'DATABASE_PASSWORD',  $config[2]);
+  define( 'DATABASE_NAME',      $config[3]);
+  define( 'DATABASE_PORT',      $config[4]);
+  define( 'DATABASE_ENGINE',    $config[5]);
+  
+}
 
 class Mullet {
 	
@@ -1119,6 +1129,9 @@ class MulletMongoDB extends MulletDatabase {
      $db = $this->conn->$dbname;
      $collname = $this->name."_".$collname;
      $coll = $db->$collname;
+
+     $crit = $criteria[0];
+/*
      $crit = array();
      foreach ($criteria as $c) {
       if (isset($c['id'])) {
@@ -1129,6 +1142,7 @@ class MulletMongoDB extends MulletDatabase {
       foreach($c as $k=>$v)
         $crit[$k] = $v;
      }
+*/
      $coll->remove($crit,true);
 
    }
@@ -1139,6 +1153,10 @@ class MulletMongoDB extends MulletDatabase {
      $db = $this->conn->$dbname;
      $collname = $this->name."_".$collname;
      $coll = $db->$collname;
+
+     $crit = $criteria[0];
+
+/*
      $crit = array();
      foreach ($criteria as $c) {
       if (isset($c['id'])) {
@@ -1149,11 +1167,15 @@ class MulletMongoDB extends MulletDatabase {
       foreach($c as $k=>$v)
         $crit[$k] = $v;
      }
+
      if (isset($newobj[0]['id']))
        unset($newobj[0]['id']);
      if (isset($newobj[0]['ok']))
        unset($newobj[0]['ok']);
-     $coll->update($crit,array('$set'=>$newobj[0]),array("multiple"=>true));
+*/
+     if (is_object($newobj[0][0]))
+       $newobj[0] = (array)$newobj[0][0];
+     $res=$coll->update($crit,array('$set'=>$newobj[0]),array("multiple"=>true));
 
    }
 
