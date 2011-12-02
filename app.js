@@ -105,39 +105,33 @@ jQuery(function($){
       Task.bind("refresh", this.proxy(this.addAll));
       Task.bind("refresh change", this.proxy(this.renderCount));
       Task.fetch();
-      setInterval(this.poll, 5*1000);
+      var el = this;
+      setInterval( function(){ el.poll( 'tasks', 'serverChanges' ) }, 4*1000 );
     },
     
-    poll: function() {
-      $.ajax({
-        contentType: 'application/json',
-        dataType: 'json',
-  			type : 'GET',
-        url : '/tasks/changes',
-        success : function(data) {
-          var taskid = [];
-          Task.each(function(t) {
-            taskid.push(t.id);
-          });
-          for (n in data.results) {
-            if (-1 == ($.inArray(data.results[n].id, taskid))) {
-              $.ajax({
-                contentType: 'application/json',
-                dataType: 'json',
-                type: 'GET',
-                url: '/tasks/'+data.results[n].id,
-                success: function(data){
-                  Task.create({
-                    name: data[0].name,
-                    done: data[0].done,
-                    id: data[0].id
-                  });
-                }
+    serverChanges: function(data) {
+      var tasks = data;
+      var taskid = [];
+      Task.each(function(t) {
+        taskid.push(t.id);
+      });
+      for (n in tasks.results) {
+        if (-1 == ($.inArray(tasks.results[n].id, taskid))) {
+          $.ajax({
+            contentType: 'application/json',
+            dataType: 'json',
+            type: 'GET',
+            url: '?class=tasks&id='+tasks.results[n].id,
+            success: function(data){
+              Task.create({
+                name: data[0].name,
+                done: data[0].done,
+                id: data[0].id
               });
             }
-          }
+          });
         }
-      });
+      }
     },
     
     create: function(e){
