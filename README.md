@@ -1,6 +1,8 @@
 Structal Todos
 ========================================================
-Structal Todos is a simple example app taken from Spine.js (www.spinejs.com). It utilizes the Structal toolset that includes the ORM library Mullet.php and the client-side MVC library Spine.js. Installation is a snap and only requires inputting a few database settings. Soon this step won't be necessary either as a database will automatically be generated for a user upon download.
+Structal Todos is a simple real-time example app taken from Spine.js (www.spinejs.com). It extends Spine by adding a poll method that checks the server for changes. When the app is open in two windows, changes in one window can be seen in the other. 
+
+Structal Todos utilizes the Structal toolset that includes the ORM library Mullet.php and the client-side MVC library Spine.js. Installation is a snap and only requires inputting a few database settings. Soon this step won't be necessary either as a database will automatically be generated for a user upon download.
 
 Requirements
 --------------------------------------------------------------------------------------------------
